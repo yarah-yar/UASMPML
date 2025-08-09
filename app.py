@@ -1,66 +1,48 @@
-!pip install streamlit scikit-learn pandas numpy joblib --quiet
-
-import joblib
-
-# Simpan model terbaik hasil training (misalnya best_rf dari Tahap 3)
-joblib.dump(best_rf, "model_restaurant_profit.pkl")
-
-# Buat file app.py untuk Streamlit
-app_code = """
 import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
 
-# Load model
-model = joblib.load('model_restaurant_profit.pkl')
+# Load model & scaler
+model = joblib.load("model.pkl")
+scaler = joblib.load("scaler.pkl")
 
-st.title("Prediksi Profitabilitas Menu Restoran")
-st.write("Masukkan informasi menu untuk memprediksi profitabilitas (High Profit / Low Profit)")
+st.title("📊 Prediksi Profitabilitas Menu Restoran")
+st.write("Masukkan detail menu untuk memprediksi apakah item tersebut **High Profit** atau **Low Profit**")
 
-# Form input
-price = st.number_input("Harga Jual (Price)", min_value=0.0, step=0.01)
-cost = st.number_input("Biaya Produksi (Cost)", min_value=0.0, step=0.01)
-quantity_sold = st.number_input("Jumlah Terjual (Quantity Sold)", min_value=0, step=1)
+# ===== Input User =====
+price = st.number_input("💲 Harga Jual (Price)", min_value=0.0, step=0.01)
+cost = st.number_input("💰 Biaya Produksi (Cost)", min_value=0.0, step=0.01)
+quantity_sold = st.number_input("📦 Jumlah Terjual (Quantity Sold)", min_value=0, step=1)
 
-# Kategori menu (ganti sesuai kategori di dataset)
-category = st.selectbox("Kategori Menu", ["Appetizer", "Main Course", "Dessert", "Beverage"])
+# Kategori menu sesuai dataset training
+category_options = ["Appetizer", "Main Course", "Dessert", "Beverage"]
+category = st.selectbox("🍽️ Kategori Menu", category_options)
 
-# One-hot encoding manual sesuai training
-category_encoded = {
-    "Category_Appetizer": 0,
-    "Category_Beverage": 0,
-    "Category_Dessert": 0,
-    "Category_Main Course": 0
-}
-if category == "Appetizer":
-    category_encoded["Category_Appetizer"] = 1
-elif category == "Beverage":
-    category_encoded["Category_Beverage"] = 1
-elif category == "Dessert":
-    category_encoded["Category_Dessert"] = 1
-elif category == "Main Course":
-    category_encoded["Category_Main Course"] = 1
+# ===== Proses Input =====
+# One-hot encoding manual (harus sama urutan & nama kolomnya seperti saat training)
+category_encoded = {f"Category_{cat}": 0 for cat in category_options}
+category_encoded[f"Category_{category}"] = 1
 
-# Gabungkan fitur numerik & kategorikal
-input_data = pd.DataFrame([{
+# Buat dataframe input sesuai kolom training
+input_df = pd.DataFrame([{
     "Price": price,
     "Cost": cost,
     "Quantity_Sold": quantity_sold,
     **category_encoded
 }])
 
-# Prediksi
+# Pastikan urutan kolom sama seperti pada training
+model_features = scaler.feature_names_in_  # Ambil urutan kolom dari scaler saat training
+input_df = input_df.reindex(columns=model_features, fill_value=0)
+
+# Scaling
+input_scaled = scaler.transform(input_df)
+
+# ===== Prediksi =====
 if st.button("Prediksi Profitabilitas"):
-    prediction = model.predict(input_data)[0]
-    st.subheader(f"Hasil Prediksi: {prediction}")
-"""
-
-with open("app.py", "w") as f:
-    f.write(app_code)
-
-# Buat requirements.txt
-with open("requirements.txt", "w") as f:
-    f.write("streamlit\nscikit-learn\nnumpy\npandas\njoblib\n")
-
-print("File Streamlit app.py dan requirements.txt sudah dibuat.")
+    prediction = model.predict(input_scaled)[0]
+    if prediction == 1 or prediction == "High Profit":
+        st.success("✅ Item menu ini diprediksi **High Profit**")
+    else:
+        st.error("❌ Item menu ini diprediksi **Low Profit**")
