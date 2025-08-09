@@ -1,11 +1,16 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
+import pickle
 
-# Load model & scaler
-model = joblib.load("model.pkl")
-scaler = joblib.load("scaler.pkl")
+# Load model
+with open("model.pkl", "rb") as f:
+    model = pickle.load(f)
+
+# Load scaler
+with open("scaler.pkl", "rb") as f:
+    scaler = pickle.load(f)
+
 
 st.title("📊 Prediksi Profitabilitas Menu Restoran")
 st.write("Masukkan detail menu untuk memprediksi apakah item tersebut **High Profit** atau **Low Profit**")
